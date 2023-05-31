@@ -1,4 +1,4 @@
-module alu(Y, C, V, N, Z, A, B, Op);
+module alu(Y, C, V, Z, A, B, Op);
    output [15:0] Y;  // Result.
    output 	 C;  // Carry.
    output 	 V;  // Overflow.
@@ -7,7 +7,8 @@ module alu(Y, C, V, N, Z, A, B, Op);
    input [15:0]  B;  // Operand.
    input [3:0] 	 Op; // Operation. 4 bits
 
-   wire [15:0] 	 BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub,Abool,Bbool,LogAnd, LogOr;
+   wire [15:0] 	 BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr;
+   wire Abool,Bbool,LogAnd1, LogOr1;
    wire 	 Vas;
    wire 	 Cas;
    
@@ -16,25 +17,28 @@ module alu(Y, C, V, N, Z, A, B, Op);
    nonzero bb(Bbool, B); //if B != 0 then Bbool = 1
    
    // The operations
-   ripple_carry_adder_subtractor incop(Inc, C, V, A, 1, 0);     	 // Op == 0000 Result = A + 1
-   ripple_carry_adder_subtractor decop(Dec, C, V, A, 1, 1);     	 // Op == 0001 Result = A - 1
-   ripple_carry_adder_subtractor subop(Sub, C, V, A, B, 1);     	 // Op == 0010 Result = A - B
-   ripple_carry_adder_subtractor addop(Add, C, V, A, B, 0);     	 // Op == 0011 Result = A + B
+   ripple_carry_adder_subtractor incop(Inc, C, V, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
+   ripple_carry_adder_subtractor decop(Dec, C, V, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
+   ripple_carry_adder_subtractor subop(Sub, C, V, A, B, 1'b1);     	     // Op == 0010 Result = A - B
+   ripple_carry_adder_subtractor addop(Add, C, V, A, B, 1'b0);     	     // Op == 0011 Result = A + B
 
 									 // Op == 0100 TODO
 									 // Op == 0101 TODO
 									 // Op == 0110 TODO
 
-   and logand(LogAnd, Abool, Bbool);                                 // Op == 0111 TODO
-	or logor(LogOr, Abool, Bbool);							    	 // Op == 1000 TODO
+   and logand(LogAnd1, Abool, Bbool);                                    // Op == 0111 Result = A && B
+   extension logand2(LogAnd, LogAnd1);
+   
+   or logor(LogO1r, Abool, Bbool);							    	     // Op == 1000 Result = A !! B
+   extension logor2(LogOr, LogOr1);
 
-   andop aluand(BitAnd, A, B);                                       // Op == 1001 Result = A . B
-   orop aluor(BitOr, A, B);                                          // Op == 1010 Result = A + B
-   xnorop aluxnor(BitXnor, A, B);                                    // Op == 1011 Result = A ~^ B
+   and_16 andop(BitAnd, A, B);                                           // Op == 1001 Result = A . B
+   or_16 orop(BitOr, A, B);                                              // Op == 1010 Result = A + B
+   xnor_16 xnorop(BitXnor, A, B);                                        // Op == 1011 Result = A ~^ B
    			                                                 // Op == 1100 TODO
    			                                                 // Op == 1101 TODO
 
-  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, TODO, TODO, TODO, LogAnd, LogAnd, BitAnd, BitOr, BitXnor, TODO, TODO, A14, A15, Op);
+  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, 16'b1, 16'b1, 16'b1, LogAnd, LogAnd, BitAnd, BitOr, BitXnor, 16'b1, 16'b1, 16'b1, 16'b1, Op);
 
  
    and(N, Y[15], s);       // Most significant bit is the sign bit in 2's complement.   
@@ -126,6 +130,29 @@ module or_16(Y, A, B);
    or(Y[15], A[15], B[15]);
 endmodule 
 
+module extension(o, A);
+    input A;
+    output [15:0] o;
+    and(o[0], 0,0);
+    and(o[1], 0,0);
+    and(o[2], 0,0);
+    and(o[3], 0,0);
+    and(o[4], 0,0);
+    and(o[5], 0,0);
+    and(o[6], 0,0);
+    and(o[7], 0,0);
+    and(o[8], 0,0);
+    and(o[9], 0,0);
+    and(o[10], 0,0);
+    and(o[11], 0,0);
+    and(o[12], 0,0);
+    and(o[13], 0,0);
+    and(o[14], 0,0);
+    and(o[15], A,A);
+endmodule
+    
+    
+
 module xnor_16(Y, A, B);
    output [15:0] Y; 
    input [15:0]  A; 
@@ -179,7 +206,7 @@ module nonzero(X, A);
     input [15:0] A;
     wire temp;
     
-    zero(temp, A);
+    zero z(temp, A);
     not(X,temp);
 endmodule
       
