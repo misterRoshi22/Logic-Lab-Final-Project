@@ -1,4 +1,4 @@
-module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write_data, read_data1, read_data2, init);
+module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write_data, read_data1, read_data2);
   input  clk;
   input  [2:0] read_addr1; // Address of operand 1
   input  [2:0] read_addr2; // Address of operand 2
@@ -10,6 +10,14 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
   input init;
   
   reg [15:0] registers [0:7]; // The eight registers comprising the register file
+  
+  integer i;
+  
+  initial begin
+    
+    for( i = 0; i < 7; i = i +1)
+        registers[i] = i;
+    end
 
   assign read_data1 = registers[read_addr1];
   assign read_data2 = registers[read_addr2];
@@ -23,14 +31,13 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
 endmodule
 
 
-module RAM(clk, addr, write_data, write_enable, read_data, init); //if write = 1 then write else read
+module RAM(clk, addr, write_data, write_enable, read_data); //if write = 1 then write else read
     input  clk; //Same Clock as Register File
     input  write_enable; //1 if instruction is store else it's equal zero
     input  [9:0] addr; //Only take the 10 least significant bits when load/store
     input  [15:0] write_data; 
     output [15:0] read_data;
     integer i;
-    input init;
     
     reg [15:0] read_data;
     
@@ -49,7 +56,7 @@ module RAM(clk, addr, write_data, write_enable, read_data, init); //if write = 1
 endmodule
 
 
-module alu(Y, C, V, Z, Op1, Op2, Op, clk, init);
+module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
 
    output [15:0] Y;  // Result.
    output 	     C;  // Carry.
@@ -59,7 +66,6 @@ module alu(Y, C, V, Z, Op1, Op2, Op, clk, init);
    input [2:0]   Op2;  // B address
    input [3:0]   Op; // Operation. 4 bits
    input         clk; // Clock
-   input         init; // Constant Zero
    
    wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr;
    wire          Abool,Bbool,LogAnd1, LogOr1;
@@ -75,8 +81,8 @@ module alu(Y, C, V, Z, Op1, Op2, Op, clk, init);
    store_op STORE(is_store, Op);
    load_op  LOAD(is_load, Op);
    
-   RegisterFile regFile(clk, Op1, Op2, Op1, is_load, write_data, A, B, init);
-   RAM ram(clk, B[9:0], A, is_store, write_data, init);
+   RegisterFile regFile(clk, Op1, Op2, Op1, is_load, write_data, A, B);
+   RAM ram(clk, B[9:0], A, is_store, write_data);
    
    //temps
    nonzero ab(Abool, A); //if A != 0 then Abool = 1
@@ -197,7 +203,7 @@ endmodule
 module extension(o, A);
     input A;
     output [15:0] o;
-    and(o[0], 0,0);
+    and(o[0], A,A);
     and(o[1], 0,0);
     and(o[2], 0,0);
     and(o[3], 0,0);
@@ -212,7 +218,7 @@ module extension(o, A);
     and(o[12], 0,0);
     and(o[13], 0,0);
     and(o[14], 0,0);
-    and(o[15], A,A);
+    and(o[15], 0,0);
 endmodule
     
     
@@ -403,4 +409,63 @@ module load_op(B, M); //0110
     not n2(inv0, M[0]);
     
     and a1(B, inv3, M[2], M[1], inv0);
+endmodule
+
+
+module cpu_tb;
+
+  reg [2:0] Op1_tb, Op2_tb;
+  reg [3:0] Op_tb;
+  reg clk_tb;
+  wire [15:0] Y_tb;
+  wire C_tb, V_tb, Z_tb;
+  
+  cpu cpu_inst(Y_tb, C_tb, V_tb, Z_tb, Op1_tb, Op2_tb, Op_tb, clk_tb);
+  
+  initial begin
+    // Initialize testbench inputs
+    clk_tb = 0;
+    Op1_tb = 0;
+    Op2_tb = 0;
+    Op_tb = 0;
+    
+    // Wait for initialization to complete
+    #10;
+    
+    // Set register file data
+    #10;
+    Op1_tb = 1;
+    Op2_tb = 2;
+    
+    // Perform operation 0011 (Op1 + Op2)
+    #10;
+    Op_tb = 4'b0011;
+    #10;
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform operation 0110 (Op1 - Op2)
+    #10;
+    Op1_tb = 4;
+    Op2_tb = 5;
+    #10;
+    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform operation 1000 (Op1 !! Op2)
+    #10;
+    Op_tb = 4'b1000;
+    Op1_tb = 0;
+    Op1_tb = 0;
+    #10;
+    $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // End simulation
+    #10;
+    $finish;
+  end
+  
+  always begin
+    #5;
+    clk_tb = ~clk_tb;
+  end
+  
 endmodule
