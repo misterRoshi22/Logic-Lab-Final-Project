@@ -65,17 +65,17 @@ endmodule
 
 module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
 
-   output [15:0] Y;  // Result.
-   output 	     C;  // Carry.
-   output 	     V;  // Overflow.
-   output 	     Z;  // Zero.
+   output [15:0] Y;    // Result.
+   output 	     C;    // Carry.
+   output 	     V;    // Overflow.
+   output 	     Z;    // Zero.
    input [2:0]   Op1;  // A address
    input [2:0]   Op2;  // B address
-   input [3:0]   Op; // Operation. 4 bits
-   input         clk; // Clock
+   input [3:0]   Op;   // Operation. 4 bits
+   input         clk;  // Clock
    
-   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr;
-   wire          Abool,Bbool,LogAnd1, LogOr1;
+   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight;
+   wire          Abool, Bbool, LogAnd1, LogOr1;
    wire 	     Vas;
    wire 	     Cas;
    wire [15:0]   A; // Operand
@@ -102,11 +102,12 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    ripple_carry_adder_subtractor addop(Add, C, V, A, B, 1'b0);     	     // Op == 0011 Result = A + B
 
 									 // Op == 0100 TODO
-									 // Op == 0101 TODO
-									 // Op == 0110 TODO
+									 // Op == 0101 Store
+									 // Op == 0110 Load
 
    and logand(LogAnd1, Abool, Bbool);                                    // Op == 0111 Result = A && B
    extension logand2(LogAnd, LogAnd1);
+  
    
    or logor(LogO1r, Abool, Bbool);							    	     // Op == 1000 Result = A !! B
    extension logor2(LogOr, LogOr1);
@@ -114,10 +115,12 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    and_16 andop(BitAnd, A, B);                                           // Op == 1001 Result = A . B
    or_16 orop(BitOr, A, B);                                              // Op == 1010 Result = A + B
    xnor_16 xnorop(BitXnor, A, B);                                        // Op == 1011 Result = A ~^ B
-   			                                                 // Op == 1100 TODO
-   			                                                 // Op == 1101 TODO
+   			                                                            
 
-  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, 16'b1, 16'b1, 16'b1, LogAnd, LogAnd, BitAnd, BitOr, BitXnor, 16'b1, 16'b1, 16'b1, 16'b1, Op);
+   circular_shift_right rightop(CircRight, A);                           // Op == 1100 Result = A >> 1 + A[0]
+   circular_shift_left leftop(CircLeft, A);                              // Op == 1101 Result = A << 1 + A[15]
+
+  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, 16'b1, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
 
    zero z(Z, Y);           // All operations can set the Zero status bit.
 endmodule // alu
@@ -160,6 +163,63 @@ module multiplexer_16_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12
                      : (S[0] == 0 ? A14 : A15))));
 endmodule // multiplexer_16_1
 
+module circular_shift_right(Y,A);
+input[15:0] A;
+output[15:0] Y;
+wire d;
+
+or(d,A[0],0);
+
+or(Y[0],A[1],0);
+or(Y[1],A[2],0);
+or(Y[2],A[3],0);
+or(Y[3],A[4],0);
+or(Y[4],A[5],0);
+
+or(Y[5],A[6],0);
+or(Y[6],A[7],0);
+or(Y[7],A[8],0);
+or(Y[8],A[9],0);
+or(Y[9],A[10],0);
+
+or(Y[10],A[11],0);
+or(Y[11],A[12],0);
+or(Y[12],A[13],0);
+or(Y[13],A[14],0);
+or(Y[14],A[15],0);
+
+or(Y[15],d,0);
+
+endmodule
+
+module circular_shift_left(Y,A);
+input[15:0] A;
+output[15:0] Y;
+wire d;
+
+or(d,A[15],0);
+or(Y[0],d,0);
+
+or(Y[1],A[0],0);
+or(Y[2],A[1],0);
+or(Y[3],A[2],0);
+or(Y[4],A[3],0);
+or(Y[5],A[4],0);
+or(Y[6],A[5],0);
+
+or(Y[7],A[6],0);
+or(Y[8],A[7],0);
+or(Y[9],A[8],0);
+or(Y[10],A[9],0);
+or(Y[11],A[10],0);
+
+or(Y[12],A[11],0);
+or(Y[13],A[12],0);
+or(Y[14],A[13],0);
+or(Y[15],A[14],0);
+
+
+endmodule
 
 module and_16(Y, A, B);
    output [15:0] Y;  
@@ -436,48 +496,57 @@ module cpu_tb;
     Op2_tb = 0;
     Op_tb = 0;
     
-    // Wait for initialization to complete
-    #10;
-    
+    // Wait for initialization 
+
     // Set register file data
-    #10;
     Op1_tb = 1;
     Op2_tb = 2;
-    
-    // Perform operation 0011 (Op1 + Op2)
-    #10;
     Op_tb = 4'b0011;
     #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 1 + 2 = 3
     
     // Perform operation 0011 (Op1 + Op2)
+    Op1_tb = 0;
+    Op2_tb = 0;
     #10;
-    Op1_tb = 4;
-    Op2_tb = 5;
-    #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 4 + 5 = 9
     
-    // Perform operation 1000 (Op1 !! Op2)
-    #10;
+    // Perform operation 1000 (Op1 !! Op2) // 1 !! 1 = 1
     Op_tb = 4'b1000;
     Op1_tb = 1;
     Op1_tb = 1;
     #10;
     $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
-    // Perform operation 0110 (load Memory[Op_2] to register[Op_1])
-    #10;
+    // Perform operation 0110 (load Memory[Op_2] to register[Op_1]) // regiester[1] = 5
     Op_tb = 4'b0110;
     Op1_tb = 1;
     Op2_tb = 5;
     #10;
     $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
-    // Perform operation 0011 (Op1 + Op2)
-    #10;
+    // Perform operation 0011 (Op1 + Op2) // 5 +6 = 11
     Op_tb = 4'b0011;
     Op1_tb = 1;
     Op2_tb = 6;
+    #10;
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    Op_tb = 4'b0101;
+    Op1_tb = 1;
+    Op2_tb = 3;
+    #10;
+    $display("Operation 0101: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    
+    Op_tb = 4'b0110;
+    Op1_tb = 4;
+    Op2_tb = 3;
+    #10;
+    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    Op_tb = 4'b0011;
+    Op1_tb = 1;
+    Op2_tb = 1;
     #10;
     $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
