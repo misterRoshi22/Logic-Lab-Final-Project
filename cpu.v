@@ -15,7 +15,7 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
   
   initial begin
     
-    for( i = 0; i < 7; i = i +1)
+    for( i = 0; i < 8; i = i +1)
         registers[i] = i;
     end
 
@@ -37,11 +37,18 @@ module RAM(clk, addr, write_data, write_enable, read_data); //if write = 1 then 
     input  [9:0] addr; //Only take the 10 least significant bits when load/store
     input  [15:0] write_data; 
     output [15:0] read_data;
-    integer i;
+
     
     reg [15:0] read_data;
     
     reg[15:0] Memory[0:1023];
+    
+    integer i;
+    initial begin
+    
+    for( i = 0; i < 1024; i = i + 1)
+        Memory[i] = i;
+    end
 
     always@(negedge clk or addr)
     begin
@@ -443,21 +450,38 @@ module cpu_tb;
     #10;
     $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
-    // Perform operation 0110 (Op1 - Op2)
+    // Perform operation 0011 (Op1 + Op2)
     #10;
     Op1_tb = 4;
     Op2_tb = 5;
     #10;
-    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
     // Perform operation 1000 (Op1 !! Op2)
     #10;
     Op_tb = 4'b1000;
-    Op1_tb = 0;
-    Op1_tb = 0;
+    Op1_tb = 1;
+    Op1_tb = 1;
     #10;
     $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
+    // Perform operation 0110 (load Memory[Op_2] to register[Op_1])
+    #10;
+    Op_tb = 4'b0110;
+    Op1_tb = 1;
+    Op2_tb = 5;
+    #10;
+    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform operation 0011 (Op1 + Op2)
+    #10;
+    Op_tb = 4'b0011;
+    Op1_tb = 1;
+    Op2_tb = 6;
+    #10;
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+
     // End simulation
     #10;
     $finish;
