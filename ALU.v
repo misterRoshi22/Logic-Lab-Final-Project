@@ -7,9 +7,13 @@ module alu(Y, C, V, N, Z, A, B, Op);
    input [15:0]  B;  // Operand.
    input [3:0] 	 Op; // Operation. 4 bits
 
-   wire [15:0] 	 And, Or, Xnor, Inc, Dec, Add, Sub;
+   wire [15:0] 	 BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub,Abool,Bbool,LogAnd, LogOr;
    wire 	 Vas;
    wire 	 Cas;
+   
+   //temps
+   nonzero ab(Abool, A); //if A != 0 then Abool = 1
+   nonzero bb(Bbool, B); //if B != 0 then Bbool = 1
    
    // The operations
    ripple_carry_adder_subtractor incop(Inc, C, V, A, 1, 0);     	 // Op == 0000 Result = A + 1
@@ -21,16 +25,16 @@ module alu(Y, C, V, N, Z, A, B, Op);
 									 // Op == 0101 TODO
 									 // Op == 0110 TODO
 
-									 // Op == 0111 TODO
-									 // Op == 1000 TODO
+   and logand(LogAnd, Abool, Bbool);                                 // Op == 0111 TODO
+	or logor(LogOr, Abool, Bbool);							    	 // Op == 1000 TODO
 
-   andop aluand(And, A, B);                                              // Op == 1001 Result = A . B
-   orop aluor(Or, A, B);                                                 // Op == 1010 Result = A + B
-   xnorop aluxnor(Xnor, A, B);                                           // Op == 1011 Result = A ~^ B
+   andop aluand(BitAnd, A, B);                                       // Op == 1001 Result = A . B
+   orop aluor(BitOr, A, B);                                          // Op == 1010 Result = A + B
+   xnorop aluxnor(BitXnor, A, B);                                    // Op == 1011 Result = A ~^ B
    			                                                 // Op == 1100 TODO
    			                                                 // Op == 1101 TODO
 
-  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, TODO, TODO, TODO, TODO, TODO, And, Or, Xnor, TODO, TODO, A14, A15, Op);
+  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, TODO, TODO, TODO, LogAnd, LogAnd, BitAnd, BitOr, BitXnor, TODO, TODO, A14, A15, Op);
 
  
    and(N, Y[15], s);       // Most significant bit is the sign bit in 2's complement.   
@@ -169,6 +173,15 @@ module zero(Z, A);
    xnor(Y[15], A[15], 0);
    and(Z, Y[0], Y[1], Y[2], Y[3], Y[4], Y[5], Y[6], Y[7], Y[8], Y[9], Y[10], Y[11], Y[12], Y[13], Y[14], Y[15]); // Z = 1 iff Y[i] == 1 for all i
 endmodule
+
+module nonzero(X, A);
+    output X;
+    input [15:0] A;
+    wire temp;
+    
+    zero(temp, A);
+    not(X,temp);
+endmodule
       
 module full_adder(S, Cout, A, B, Cin);
    output S;
@@ -271,4 +284,3 @@ module ripple_carry_adder_subtractor(S, C, V, A, B, Op);
    full_adder fa15(S[15], C15, A[15], B15, C14);    // Most significant bit.
 
 endmodule // ripple_carry_adder_subtractor
-
