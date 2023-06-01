@@ -16,7 +16,7 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
   initial begin
     
     for( i = 0; i < 8; i = i +1)
-        registers[i] = i;
+        registers[i] = i+5;
     end
 
   assign read_data1 = registers[read_addr1];
@@ -83,6 +83,7 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    wire [15:0]   write_data; // Data used in store and load operations
    wire          is_store;
    wire          is_load;
+   wire          is_arth;
    
    
 
@@ -95,12 +96,13 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    nonzero bb(Bbool, B); //if B != 0 then Bbool = 1
    store_op STORE(is_store, Op);
    load_op  LOAD(is_load, Op);
+   arth_op ARTH(is_ath, Op);
    
    // The operations
-   ripple_carry_adder_subtractor incop(Inc, C, V, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
-   ripple_carry_adder_subtractor decop(Dec, C, V, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
-   ripple_carry_adder_subtractor subop(Sub, C, V, A, B, 1'b1);     	     // Op == 0010 Result = A - B
-   ripple_carry_adder_subtractor addop(Add, C, V, A, B, 1'b0);     	     // Op == 0011 Result = A + B
+   ripple_carry_adder_subtractor incop(Inc, Cas, Vas, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
+   ripple_carry_adder_subtractor decop(Dec, Cas, Vas, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
+   ripple_carry_adder_subtractor subop(Sub, Cas, Vas, A, B, 1'b1);     	     // Op == 0010 Result = A - B
+   ripple_carry_adder_subtractor addop(Add, Cas, Vas, A, B, 1'b0);     	     // Op == 0011 Result = A + B
 
    comparator compop(comLT,A,B);								         // Op == 0100 Result = A <= B ? 1 : 0
    extension compop2(Comp, comLT);
@@ -125,6 +127,8 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
 
    zero z(Z, Y);           // All operations can set the Zero status bit.
+   and(V, Vas, is_arth);
+   and(C, Cas, is_arth);
 endmodule // alu
 
 
@@ -514,6 +518,19 @@ module ripple_carry_adder_subtractor(S, C, V, A, B, Op);
 
 endmodule // ripple_carry_adder_subtractor
 
+
+module arth_op(B, M); //00xx
+    input [3:0] M;
+    output B;
+    
+    wire inv3;
+    wire inv2;
+    
+    not n1(inv3, M[3]);
+    not n2(inv2, M[2]);
+    
+    and a1(bB, inv3, inv2);
+endmodule //arth_op
 
 module store_op(B, M); //0101
     input [3:0] M;
