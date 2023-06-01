@@ -632,7 +632,13 @@ module cpu_tb;
   cpu cpu_inst(Y_tb, C_tb, V_tb, Z_tb, Op1_tb, Op2_tb, Op_tb, clk_tb);
   
   initial begin
-    #10  $display("The Ram and register file are initialized to have the same value as the address   i.e register[101]=5,ram[101]=5..");
+    clk_tb = 0;
+    Op1_tb = 0;
+    Op2_tb = 0;
+    Op_tb = 0;
+    
+    #10// Wait for initialization 
+    $display("The Ram and register file are initialized to have the same value as the address   i.e register[101]=5,ram[101]=5..");
     
     // Perform operation 0000 (Op1 = Op1 + 1)
     Op1_tb = 1;
