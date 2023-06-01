@@ -1,4 +1,4 @@
-// Mahmoud Abu-Qtiesh 20210383	sec:Sunday 
+//Mahmoud Abu-Qtiesh 20210383	sec:Sunday 
 //Selen Qarajeh 20210622	sec:Thursday
 //Nazeeh Hanbali 20210144	sec:Sunday
 
@@ -41,7 +41,7 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	     // Op == 0010 Result = A - B
    ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	     // Op == 0011 Result = A + B
 
-   comparator compop(comLT,A,B);								         // Op == 0100 Result = A <= B ? 1 : 0
+   comparator compop(comLT,A,B);								         // Op == 0100 A = A <= B ? 1 : 0
    extension compop2(Comp, comLT);
                                 	                                     // Op == 0101 Store
 	                            	                                     // Op == 0110 Load
@@ -632,119 +632,119 @@ module cpu_tb;
   cpu cpu_inst(Y_tb, C_tb, V_tb, Z_tb, Op1_tb, Op2_tb, Op_tb, clk_tb);
   
   initial begin
-    // Initialize testbench inputs
-    clk_tb = 0;
-    Op1_tb = 0;
-    Op2_tb = 0;
-    Op_tb = 0;
-    
-    // Wait for initialization 
-    #10;
+    #10  $display("The Ram and register file are initialized to have the same value as the address   i.e register[101]=5,ram[101]=5..");
     
     // Perform operation 0000 (Op1 = Op1 + 1)
     Op1_tb = 1;
     Op2_tb = 2;
     Op_tb = 4'b0000;
     #10;
-    $display("Operation 0000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 2
+    $display("Operation 0000: Op1=%d               register[%b]+1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 2   
     
     // Perform operation 0001 (Op1 = Op1 - 1)
     Op1_tb = 5;
     Op_tb = 4'b0001;
     #10;
-    $display("Operation 0001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 4
+    $display("Operation 0001: Op1=%d               register[%b]-1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 4   
     
     // Perform operation 0010 (Op1 - Op2) 
     Op_tb = 4'b0010;
     Op1_tb = 7;
     Op2_tb = 1;
     #10;
-    $display("Operation 0010: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);// 6
+    $display("Operation 0010: Op1=%d    Op2=%d      Op1-Op2 = %d,                                    C = %b, V = %b, Z = %b",Op1_tb,Op2_tb, Y_tb, C_tb, V_tb, Z_tb);// 6
     
     // Perform operation 0011 (Op1 + Op2) 
     Op_tb = 4'b0011;
     Op1_tb = 5;
     Op2_tb = 5;
     #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //10
+    $display("Operation 0011: Op1=%d    Op2=%d      Op1+Op2 = %d,                                    C = %b, V = %b, Z = %b",Op1_tb,Op2_tb, Y_tb, C_tb, V_tb, Z_tb);// 10
     
-    // Perform operation 0100 (Op1 <= Op2)
+    // Perform operation 0100 (Op1 < Op2)
     Op_tb = 4'b0100;
     Op1_tb = 6;
     Op2_tb = 1;
     #10;
-    $display("Operation 0100: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //  0
+    $display("Operation 0100: Op1=%d    Op2=%d      Op1<Op2 = %d,                                                  Z = %b",Op1_tb,Op2_tb, Y_tb, Z_tb);// 0
+    //#10 $display("Now Op2=%d    ",Op2_tb);
     
     // Perform Operation 0101 (memory[Op2] = register[Op1])
     Op_tb = 4'b0101;
     Op1_tb = 2;
     Op2_tb = 7;
     #10;
-    $display("Operation 0101: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);//1
+    $display("Operation 0101: Op1=%d    Op2=%d      memory[%b] = register[%b]=%d,                                    Z = %b",Op1_tb,Op2_tb,Op2_tb,Op1_tb,Op1_tb,Z_tb);//1
     
     // Perform Operation 0110 (register[Op1] = memory[Op2])
     Op_tb = 4'b0110;
     Op1_tb = 4;
     Op2_tb = 7;
     #10;
-    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //1
+    $display("Operation 0110: Op1=%d    Op2=%d      register[%b] = memory[%b]=2,                                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Z_tb);//1
     
-    // Perform operation 0001 (Op1 = Op1 + 1)
+    // Perform operation 0000 (Op1 = Op1 + 1)
     Op1_tb = 4;
     Op2_tb = 2;
     Op_tb = 4'b0000;
     #10;
-    $display("Operation 0000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 3
-    
+    $display("Operation 0000: Op1=%d               register[%b]+1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 3    
     
     // Perform Operation 0111 (Op1 && Op2)
     Op_tb = 4'b0111;
     Op1_tb = 0;
     Op2_tb = 3;
     #10;
-    $display("Operation 0111: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //0
+    $display("Operation 0111: Op1=%d    Op2=%d      register[%b]!=0 && register[%b]!=0   =%d,                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//0
+    
+    // Perform Operation 0111 (Op1 && Op2)
+    Op_tb = 4'b0111;
+    Op1_tb = 6;
+    Op2_tb = 5;
+    #10;
+    $display("Operation 0111: Op1=%d    Op2=%d      register[%b]!=0 && register[%b]!=0   =%d,                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//1
     
     // Perform Operation 1000 (Op1 || Op2) 
     Op_tb = 4'b1000;
     Op1_tb = 0;
     Op2_tb = 2;
     #10;
-    $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //1
+    $display("Operation 1000: Op1=%d    Op2=%d      register[%b]!=0 || register[%b]!=0   =%d,                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//1
     
     // Perform Operation 1001 (Op1 & Op2)
     Op_tb = 4'b1001;
-    Op1_tb = 3;
-    Op2_tb = 7;
+    Op1_tb = 7;
+    Op2_tb = 3;
     #10;
-    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //3
+    $display("Operation 1001: Op1=%d    Op2=%d      register[%b] & register[%b] =%b,                  Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//3
     
     // Perform Operation 1010 (Op1 | Op2)
     Op_tb = 4'b1010;
-    Op1_tb = 5;
-    Op2_tb = 2;
+    Op1_tb = 7;
+    Op2_tb = 3;
     #10;
-    $display("Operation 1010: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //7
+    $display("Operation 1010: Op1=%d    Op2=%d      register[%b] | register[%b] =%b,                  Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//7
     
     // Perform Operation 1011 (Op1 ~^ Op2)
     Op_tb = 4'b1011;
-    Op1_tb = 5;
-    Op2_tb = 2;
+    Op1_tb = 7;
+    Op2_tb = 3;
     #10;
-    $display("Operation 1011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);//ra8am kbeer
+    $display("Operation 1011: Op1=%d    Op2=%d      register[%b] ~^ register[%b] =%b,                 Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//ra8am kbeer
     
-    // Perform Operation 1100 
+    // Perform Operation 1100  shift right
     Op_tb = 4'b1100;
-    Op1_tb = 6;
+    Op1_tb = 1;
     Op2_tb = 2;
     #10;
-    $display("Operation 1100: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //3
+    $display("Operation 1100: Op1=%d               register[%b] shifted to the right =%b,             Z = %b",Op1_tb,Op1_tb,Y_tb,Z_tb);//7
     
-    // Perform Operation 1101 
+    // Perform Operation 1101  shift left
     Op_tb = 4'b1101;
     Op1_tb = 6;
     Op2_tb = 2;
     #10;
-    $display("Operation 1101: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //12
+    $display("Operation 1101: Op1=%d               register[%b] shifted to the left  =%b,             Z = %b",Op1_tb,Op1_tb,Y_tb,Z_tb);//12
     
     
     // End simulation
