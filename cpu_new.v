@@ -13,8 +13,8 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    
    wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight,Comp;
    wire          Abool, Bbool, LogAnd1, LogOr1,comLT;
-   wire 	     Vas;
-   wire 	     Cas;
+   wire 	     Vas0, Vas1, Vas2, Vas3;
+   wire 	     Cas0, Cas1, Cas2, Cas3;
    wire [15:0]   A; // Operand
    wire [15:0]   B; // Operand
    wire [15:0]   write_data; // Data used in store and load operations
@@ -34,10 +34,10 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    arth_op ARTH(is_ath, Op);
    
    // The operations
-   ripple_carry_adder_subtractor incop(Inc, Cas, Vas, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
-   ripple_carry_adder_subtractor decop(Dec, Cas, Vas, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
-   ripple_carry_adder_subtractor subop(Sub, Cas, Vas, A, B, 1'b1);     	     // Op == 0010 Result = A - B
-   ripple_carry_adder_subtractor addop(Add, Cas, Vas, A, B, 1'b0);     	     // Op == 0011 Result = A + B
+   ripple_carry_adder_subtractor incop(Inc, Cas0, Vas0, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
+   ripple_carry_adder_subtractor decop(Dec, Cas1, Vas1, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
+   ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	     // Op == 0010 Result = A - B
+   ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	     // Op == 0011 Result = A + B
 
    comparator compop(comLT,A,B);								         // Op == 0100 Result = A <= B ? 1 : 0
    extension compop2(Comp, comLT);
@@ -58,11 +58,11 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    circular_shift_right rightop(CircRight, A);                           // Op == 1100 Result = A >> 1 + A[0]
    circular_shift_left leftop(CircLeft, A);                              // Op == 1101 Result = A << 1 + A[15]
 
-   multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
+   multiplexer_16_1_1 muxC(C, Cas0, Cas1, Cas2, Cas3, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, Op);
+   multiplexer_16_1_1 muxv(V, Vas0, Vas1, Vas2, Vas3, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, Op);
+   multiplexer_16_1 muxY(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
 
    zero z(Z, Y);           // All operations can set the Zero status bit.
-   and(V, Vas, is_arth);
-   and(C, Cas, is_arth);
 endmodule // cpu
 
 
@@ -254,6 +254,45 @@ module multiplexer_16_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12
                      ? (S[0] == 0 ? A12 : A13)
                      : (S[0] == 0 ? A14 : A15))));
 endmodule // multiplexer_16_1
+
+module multiplexer_16_1_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, S);
+  output X;              // The output line
+
+  input A15;             // Input line with id 4'b1111
+  input A14;             // Input line with id 4'b1110
+  input A13;             // Input line with id 4'b1101
+  input A12;             // Input line with id 4'b1100
+  input A11;             // Input line with id 4'b1011
+  input A10;             // Input line with id 4'b1010
+  input A9;              // Input line with id 4'b1001
+  input A8;              // Input line with id 4'b1000
+  input A7;              // Input line with id 4'b0111
+  input A6;              // Input line with id 4'b0110
+  input A5;              // Input line with id 4'b0101
+  input A4;              // Input line with id 4'b0100
+  input A3;              // Input line with id 4'b0011
+  input A2;              // Input line with id 4'b0010
+  input A1;              // Input line with id 4'b0001
+  input A0;              // Input line with id 4'b0000
+  input [3:0] S;         // Selection lines
+
+  assign X = (S[3] == 0 
+              ? (S[2] == 0 
+                  ? (S[1] == 0 
+                     ? (S[0] == 0 ? A0 : A1)
+                     : (S[0] == 0 ? A2 : A3))
+                  : (S[1] == 0 
+                     ? (S[0] == 0 ? A4 : A5)
+                     : (S[0] == 0 ? A6 : A7)))
+              : (S[2] == 0 
+                  ? (S[1] == 0 
+                     ? (S[0] == 0 ? A8 : A9)
+                     : (S[0] == 0 ? A10 : A11))
+                  : (S[1] == 0 
+                     ? (S[0] == 0 ? A12 : A13)
+                     : (S[0] == 0 ? A14 : A15))));
+endmodule // multiplexer_16_1_1
+
 
 module circular_shift_right(Y, A);
   input [15:0] A;
@@ -663,7 +702,7 @@ module cpu_tb;
     #10;
     $display("Operation 0111: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //0
     
-    // Perform Operation 1000 (Op1 || Op2) //TODO DOESNT WORK
+    // Perform Operation 1000 (Op1 || Op2) 
     Op_tb = 4'b1000;
     Op1_tb = 0;
     Op2_tb = 2;
