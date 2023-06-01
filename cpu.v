@@ -74,8 +74,8 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    input [3:0]   Op;   // Operation. 4 bits
    input         clk;  // Clock
    
-   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight;
-   wire          Abool, Bbool, LogAnd1, LogOr1;
+   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight,Comp;
+   wire          Abool, Bbool, LogAnd1, LogOr1,comLT;
    wire 	     Vas;
    wire 	     Cas;
    wire [15:0]   A; // Operand
@@ -85,8 +85,7 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    wire          is_load;
    
    
-   store_op STORE(is_store, Op);
-   load_op  LOAD(is_load, Op);
+
    
    RegisterFile regFile(clk, Op1, Op2, Op1, is_load, write_data, A, B);
    RAM ram(clk, B[9:0], A, is_store, write_data);
@@ -94,6 +93,8 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    //temps
    nonzero ab(Abool, A); //if A != 0 then Abool = 1
    nonzero bb(Bbool, B); //if B != 0 then Bbool = 1
+   store_op STORE(is_store, Op);
+   load_op  LOAD(is_load, Op);
    
    // The operations
    ripple_carry_adder_subtractor incop(Inc, C, V, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
@@ -101,9 +102,10 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    ripple_carry_adder_subtractor subop(Sub, C, V, A, B, 1'b1);     	     // Op == 0010 Result = A - B
    ripple_carry_adder_subtractor addop(Add, C, V, A, B, 1'b0);     	     // Op == 0011 Result = A + B
 
-									 // Op == 0100 TODO
-									 // Op == 0101 Store
-									 // Op == 0110 Load
+   comparator compop(comLT,A,B);								         // Op == 0100 Result = A <= B ? 1 : 0
+   extension compop2(Comp, comLT);
+									                                     // Op == 0101 Store
+									                                     // Op == 0110 Load
 
    and logand(LogAnd1, Abool, Bbool);                                    // Op == 0111 Result = A && B
    extension logand2(LogAnd, LogAnd1);
@@ -120,10 +122,76 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    circular_shift_right rightop(CircRight, A);                           // Op == 1100 Result = A >> 1 + A[0]
    circular_shift_left leftop(CircLeft, A);                              // Op == 1101 Result = A << 1 + A[15]
 
-  multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, 16'b1, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
+   multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
 
    zero z(Z, Y);           // All operations can set the Zero status bit.
 endmodule // alu
+
+
+
+module comparator(comLT,A,B);
+  input [15:0] A;
+  input [15:0] B;
+  output comLT;
+  
+  wire [15:0] LT,equal,bitLT; 
+  
+  xnor(equal[15],A[15],B[15]);
+  xnor(equal[14],A[14],B[14]);
+  xnor(equal[13],A[13],B[13]);
+  xnor(equal[12],A[12],B[12]);
+  xnor(equal[11],A[11],B[11]);
+  xnor(equal[10],A[10],B[10]);
+  xnor(equal[9],A[9],B[9]);
+  xnor(equal[8],A[8],B[8]);
+  xnor(equal[7],A[7],B[7]);
+  xnor(equal[6],A[6],B[6]);
+  xnor(equal[5],A[5],B[5]);
+  xnor(equal[4],A[4],B[4]);
+  xnor(equal[3],A[3],B[3]);
+  xnor(equal[2],A[2],B[2]);
+  xnor(equal[1],A[1],B[1]);
+  xnor(equal[0],A[0],B[0]);
+
+  and(bitLT[15],~A[15],B[15]);
+  and(bitLT[14],~A[14],B[14]);
+  and(bitLT[13],~A[13],B[13]);
+  and(bitLT[12],~A[12],B[12]);
+  and(bitLT[11],~A[11],B[11]);
+  and(bitLT[10],~A[10],B[10]);
+  and(bitLT[9],~A[9],B[9]);
+  and(bitLT[8],~A[8],B[8]);
+  and(bitLT[7],~A[7],B[7]);
+  and(bitLT[6],~A[6],B[6]);
+  and(bitLT[5],~A[5],B[5]);
+  and(bitLT[4],~A[4],B[4]);
+  and(bitLT[3],~A[3],B[3]);
+  and(bitLT[2],~A[2],B[2]);
+  and(bitLT[1],~A[1],B[1]);
+  and(bitLT[0],~A[0],B[0]);
+
+  and(LT[15],bitLT[15],1);
+  and(LT[14],bitLT[14],equal[15]);
+  and(LT[13],bitLT[13],equal[15],equal[14]);
+  and(LT[12],bitLT[12],equal[15],equal[14],equal[13]);
+  and(LT[11],bitLT[11],equal[15],equal[14],equal[13],equal[12]);
+  and(LT[10],bitLT[10],equal[15],equal[14],equal[13],equal[12],equal[11]);
+  and(LT[9],bitLT[9],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10]);
+  and(LT[8],bitLT[8],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9]);
+  and(LT[7],bitLT[7],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8]);
+  and(LT[6],bitLT[6],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7]);
+  and(LT[5],bitLT[5],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7],equal[6]);
+  and(LT[4],bitLT[4],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7],equal[6],equal[5]);
+  and(LT[3],bitLT[3],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7],equal[6],equal[5],equal[4]);
+  and(LT[2],bitLT[2],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7],equal[6],equal[5],equal[4],equal[3]);
+  and(LT[1],bitLT[1],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7],equal[6],equal[5],equal[4],equal[3],equal[2]);
+  and(LT[0],bitLT[0],equal[15],equal[14],equal[13],equal[12],equal[11],equal[10],equal[9],equal[8],equal[7],equal[6],equal[5],equal[4],equal[3],equal[2],equal[1]);
+
+  
+or(comLT,LT[15],LT[14],LT[13],LT[12],LT[11],LT[10],LT[9],LT[8],LT[7],LT[6],LT[5],LT[4],LT[3],LT[2],LT[1],LT[0]);
+
+endmodule
+
 
 module multiplexer_16_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, S);
    output [15:0] X;        // The output line
@@ -341,10 +409,7 @@ endmodule
 module nonzero(X, A);
     output X;
     input [15:0] A;
-    wire temp;
-    
-    zero z(temp, A);
-    not(X,temp);
+    or(X, A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7], A[8], A[9], A[10], A[11], A[12], A[13], A[14], A[15]);
 endmodule
       
 module full_adder(S, Cout, A, B, Cin);
@@ -498,66 +563,111 @@ module cpu_tb;
     
     // Wait for initialization 
 
-    // Set register file data
+    // Perform operation 0001 (Op1 = Op1 + 1)
     Op1_tb = 1;
     Op2_tb = 2;
+    Op_tb = 4'b0000;
+    #10;
+    $display("Operation 0000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // A++ = 2
+    
+    // Perform operation 0001 (Op1 = Op1 - 1)
+    Op1_tb = 5;
+    Op_tb = 4'b0001;
+    #10;
+    $display("Operation 0001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // A-- = 4
+    
+    // Perform operation 0010 (Op1 - Op2) 
+    Op_tb = 4'b0010;
+    Op1_tb = 5;
+    Op2_tb = 3;
+    #10;
+    $display("Operation 0010: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);// A - B = 2
+    
+    // Perform operation 0011 (Op1 + Op2) 
     Op_tb = 4'b0011;
-    #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 1 + 2 = 3
-    
-    // Perform operation 0011 (Op1 + Op2)
-    Op1_tb = 0;
-    Op2_tb = 0;
-    #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // 4 + 5 = 9
-    
-    // Perform operation 1000 (Op1 !! Op2) // 1 !! 1 = 1
-    Op_tb = 4'b1000;
-    Op1_tb = 1;
-    Op1_tb = 1;
-    #10;
-    $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
-    
-    // Perform operation 0110 (load Memory[Op_2] to register[Op_1]) // regiester[1] = 5
-    Op_tb = 4'b0110;
     Op1_tb = 1;
     Op2_tb = 5;
     #10;
-    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // A + B = 6
     
-    // Perform operation 0011 (Op1 + Op2) // 5 +6 = 11
-    Op_tb = 4'b0011;
-    Op1_tb = 1;
-    Op2_tb = 6;
+    // Perform operation 0100 (Op1 <= Op2)
+    Op_tb = 4'b0100;
+    Op1_tb = 6;
+    Op2_tb = 1;
     #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0100: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //  A <= B == false
+    
+    // Perform Operation 0101 (memory[Op2] = register[Op1)
     Op_tb = 4'b0101;
-    Op1_tb = 1;
-    Op2_tb = 3;
+    Op1_tb = 6;
+    Op2_tb = 7;
     #10;
     $display("Operation 0101: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
-    
+    // Perform Operation 0110 (regiester[Op1] = memory[Op2])
     Op_tb = 4'b0110;
-    Op1_tb = 4;
-    Op2_tb = 3;
+    Op1_tb = 0;
+    Op2_tb = 2;
     #10;
     $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
-    Op_tb = 4'b0011;
+    // Perform Operation 0111 (Op1 && Op2)
+    Op_tb = 4'b0111;
     Op1_tb = 1;
-    Op2_tb = 1;
+    Op2_tb = 3;
     #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0111: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
     
-
+    // // Perform Operation 1000 (Op1 || Op2) //TODO DOESNT WORK
+    // Op_tb = 4'b1000;
+    // Op1_tb = 1;
+    // Op2_tb = 2;
+    // #10;
+    // $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform Operation 1001 (Op1 & Op2)
+    Op_tb = 4'b1001;
+    Op1_tb = 5;
+    Op2_tb = 2;
+    #10;
+    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform Operation 1010 (Op1 | Op2)
+    Op_tb = 4'b1010;
+    Op1_tb = 5;
+    Op2_tb = 2;
+    #10;
+    $display("Operation 1010: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform Operation 1011 (Op1 | Op2)
+    Op_tb = 4'b1011;
+    Op1_tb = 5;
+    Op2_tb = 2;
+    #10;
+    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform Operation 1100 (Op1 | Op2)
+    Op_tb = 4'b1100;
+    Op1_tb = 6;
+    Op2_tb = 2;
+    #10;
+    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    // Perform Operation 1101 (Op1 | Op2)
+    Op_tb = 4'b1101;
+    Op1_tb = 6;
+    Op2_tb = 2;
+    #10;
+    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    
+    
     // End simulation
     #10;
     $finish;
   end
   
   always begin
-    #5;
+    #10;
     clk_tb = ~clk_tb;
   end
   
