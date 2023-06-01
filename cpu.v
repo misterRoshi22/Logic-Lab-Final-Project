@@ -711,7 +711,7 @@ module cpu_tb;
   end
   
   always begin
-    #10;
+    #5;
     clk_tb = ~clk_tb;
   end
   
