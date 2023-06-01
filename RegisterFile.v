@@ -86,7 +86,7 @@ module RegisterFile_tb;
     
     #10;
     write_enable = 0;       // Enable write
-    write_data = 175;  // New write data
+    write_data = 215;  // New write data
     write_addr = 3'b100;    // Write address
     read_addr1 = 3'b100;    // Read address 1
     read_addr2 = 3'b011;    // Read address 2
