@@ -4,12 +4,20 @@ module RAM(clk, addr, write_data, write_enable, read_data); //if write = 1 then 
     input  [9:0] addr; //Only take the 10 least significant bits when load/store
     input  [15:0] write_data; 
     output [15:0] read_data;
+
     
     reg [15:0] read_data;
     
-    reg[15:0] Memory[1023:0];
+    reg[15:0] Memory[0:1023];
     
-    always@(negedge clk or addr)
+    integer i;
+    initial begin
+    
+    for( i = 0; i < 1024; i = i + 1)
+        Memory[i] = i;
+    end
+
+    always@(negedge clk or addr or write_enable)
     begin
         if(write_enable == 1) begin
         Memory[addr] = write_data; //Used in store operation where addr = Op2 and write_data = Op1
@@ -20,7 +28,3 @@ module RAM(clk, addr, write_data, write_enable, read_data); //if write = 1 then 
         end
     end
 endmodule
-
-
-
-            
