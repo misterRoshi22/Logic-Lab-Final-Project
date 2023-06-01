@@ -7,10 +7,18 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
   input  [15:0] write_data; // Used in load operation, (write_data = &Op2 from RAM)
   output  [15:0] read_data1; // Op1
   output  [15:0] read_data2;// Op1
+  input init;
   
   reg [15:0] registers [0:7]; // The eight registers comprising the register file
+  
+  integer i;
+  
+  initial begin
+    
+    for( i = 0; i < 8; i = i +1)
+        registers[i] = i;
+    end
 
- 
   assign read_data1 = registers[read_addr1];
   assign read_data2 = registers[read_addr2];
 
