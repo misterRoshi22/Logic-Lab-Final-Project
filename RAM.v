@@ -12,7 +12,7 @@ module RAM(clk, addr, write_data, write_enable, read_data);
       Memory[i] = i;
   end
 
-  always @(posedge clk) begin
+  always @(negedge clk or addr or write_data) begin
     if (write_enable == 1)
       Memory[addr] <= write_data; // Used in store operation where addr = Op2 and write_data = Op1
       
