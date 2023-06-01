@@ -1,4 +1,6 @@
-// Mahmoud, Selen, Nazeeh
+// Mahmoud Abu-Qtiesh 20210383	sec:Sunday 
+//Selen Qarajeh 20210622	sec:Thursday
+//Nazeeh Hanbali 20210144	sec:Sunday
 
 module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
 
