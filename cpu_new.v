@@ -1,70 +1,65 @@
 //Mahmoud Abu-Qtiesh 20210383	sec:Sunday 
-//Selen Qarajeh 20210622	sec:Thursday
-//Nazeeh Hanbali 20210144	sec:Sunday
+//Selen Qarajeh      20210622   sec:Thursday
+//Nazeeh Hanbali     20210144	sec:Sunday
 
 module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
 
-   output [15:0] Y;    // Result.
-   output 	     C;    // Carry.
-   output 	     V;    // Overflow.
-   output 	     Z;    // Zero.
-   input [2:0]   Op1;  // A address
-   input [2:0]   Op2;  // B address
-   input [3:0]   Op;   // Operation. 4 bits
-   input         clk;  // Clock
-   
-   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight,Comp;
-   wire          Abool, Bbool, LogAnd1, LogOr1,comLT;
-   wire 	     Vas0, Vas1, Vas2, Vas3;
-   wire 	     Cas0, Cas1, Cas2, Cas3;
-   wire [15:0]   A; // Operand
-   wire [15:0]   B; // Operand
-   wire [15:0]   write_data; // Data used in store and load operations
+   output [15:0]	 Y;   // Result
+   output 	     	 C;   // Carry
+   output 	    	 V;   // Overflow
+   output 	    	 Z;   // Zero
+   input [2:0]   	Op1;  // A address
+   input [2:0]   	Op2;  // B address
+   input [3:0]   	Op;   // Operation Code
+   input         	clk;  // Clock
+  
+   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight, Comp;  // MUX Inputs
+   wire          comLT;                                                                                 // Comparasion Result
+   wire 	 Vas0, Vas1, Vas2, Vas3;                                                                // Overflow's from the 4 Arithmetic Operations
+   wire 	 Cas0, Cas1, Cas2, Cas3;                                                                // Carry's from the 4 Arithmetic Operations
+   wire [15:0]   A;                                                                                     // Operand
+   wire [15:0]   B;                                                                                     // Operand
+   wire [15:0]   write_data;                                                                            // Data used in store and load operations
    wire          is_store;
    wire          is_load;
-   wire          is_arth;
    
   
-   RegisterFile regFile(clk, Op1, Op2, Op1, is_load, write_data, A, B);
-   RAM ram(clk, B[9:0], A, is_store, write_data);
+   RegisterFile regFile(clk, Op1, Op2, Op1, is_load, write_data, A, B);                 // Op == 0101 Store
+   RAM ram(clk, B[9:0], A, is_store, write_data);                                       // Op == 0110 Load
    
-   //temps
-   nonzero ab(Abool, A); //if A != 0 then Abool = 1
-   nonzero bb(Bbool, B); //if B != 0 then Bbool = 1
+   // Minterm Checker for Store Operation and Load Operations
    store_op STORE(is_store, Op);
    load_op  LOAD(is_load, Op);
-   arth_op ARTH(is_ath, Op);
    
-   // The operations
-   ripple_carry_adder_subtractor incop(Inc, Cas0, Vas0, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
-   ripple_carry_adder_subtractor decop(Dec, Cas1, Vas1, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
-   ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	     // Op == 0010 Result = A - B
-   ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	     // Op == 0011 Result = A + B
+   // Arithmetic Operations
+   ripple_carry_adder_subtractor incop(Inc, Cas0, Vas0, A, 16'b1, 1'b0);     	        // Op == 0000 Result = A + 1
+   ripple_carry_adder_subtractor decop(Dec, Cas1, Vas1, A, 16'b1, 1'b1);     	        // Op == 0001 Result = A - 1
+   ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	        // Op == 0010 Result = A - B
+   ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	        // Op == 0011 Result = A + B
 
-   comparator compop(comLT,A,B);								         // Op == 0100 A = A <= B ? 1 : 0
+   // Logical Operations
+   comparator compop(comLT,A,B);							// Op == 0100 A = A <= B ? 1 : 0
    extension compop2(Comp, comLT);
-                                	                                     // Op == 0101 Store
-	                            	                                     // Op == 0110 Load
 
+   logical_and logandop(LogAnd, A, B);                                                  // Op == 0111 Result = A && B
+   logical_or logorop(LogOr, A, B);                                                     // Op == 1000 Result = A || B
 
-   logical_and logandop(LogAnd, A, B);
-   logical_or logorop(LogOr, A, B);
-
-  
-
-   and_16 andop(BitAnd, A, B);                                           // Op == 1001 Result = A . B
-   or_16 orop(BitOr, A, B);                                              // Op == 1010 Result = A + B
-   xnor_16 xnorop(BitXnor, A, B);                                        // Op == 1011 Result = A ~^ B
+   and_16 andop(BitAnd, A, B);                                                          // Op == 1001 Result = A & B
+   or_16 orop(BitOr, A, B);                                                             // Op == 1010 Result = A | B
+   xnor_16 xnorop(BitXnor, A, B);                                                       // Op == 1011 Result = A ~^ B
    			                                                            
+   circular_shift_right rightop(CircRight, A);                                          // Op == 1100 Result = A >> 1 + A[0]
+   circular_shift_left leftop(CircLeft, A);                                             // Op == 1101 Result = A << 1 + A[15]
 
-   circular_shift_right rightop(CircRight, A);                           // Op == 1100 Result = A >> 1 + A[0]
-   circular_shift_left leftop(CircLeft, A);                              // Op == 1101 Result = A << 1 + A[15]
 
+   // Result and Status MUXs
    multiplexer_16_1_1 muxC(C, Cas0, Cas1, Cas2, Cas3, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, Op);
    multiplexer_16_1_1 muxv(V, Vas0, Vas1, Vas2, Vas3, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, Op);
    multiplexer_16_1 muxY(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
 
-   zero z(Z, Y);           // All operations can set the Zero status bit.
+   // Zero Flag set to 1 iff Result == 1
+   zero z(Z, Y);           
+   
 endmodule // cpu
 
 
@@ -80,7 +75,7 @@ module logical_and(R, A, B);
 
   and(final, temp_a, temp_b);
   extension e1(R, final);
-endmodule
+endmodule // logical_and
 
 module logical_or(R, A, B);
   input [15:0] A;
@@ -94,7 +89,7 @@ module logical_or(R, A, B);
 
   or(final, temp_a, temp_b);
   extension e1(R, final);
-endmodule
+endmodule // logical_or
 
 
 module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write_data, read_data1, read_data2);
@@ -127,7 +122,7 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
       registers[write_addr] <= write_data;
   end
 
-endmodule
+endmodule // RegisterFile
 
 
 module RAM(clk, addr, write_data, write_enable, read_data);
@@ -135,7 +130,7 @@ module RAM(clk, addr, write_data, write_enable, read_data);
   input  write_enable; // 1 if instruction is store, otherwise 0
   input  [9:0] addr; // Only take the 10 least significant bits for load/store
   input  [15:0] write_data; 
-  output reg [15:0] read_data; // Change to reg type
+  output reg [15:0] read_data; 
 
   reg [15:0] Memory[0:1023];
   
@@ -150,7 +145,7 @@ module RAM(clk, addr, write_data, write_enable, read_data);
       
     read_data <= Memory[addr]; // Move read_data assignment inside always block
   end
-endmodule
+endmodule // RAM
 
 
 
@@ -216,7 +211,7 @@ module comparator(comLT,A,B);
   
 or(comLT,LT[15],LT[14],LT[13],LT[12],LT[11],LT[10],LT[9],LT[8],LT[7],LT[6],LT[5],LT[4],LT[3],LT[2],LT[1],LT[0]);
 
-endmodule
+endmodule // comparator
 
 
 module multiplexer_16_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, S);
@@ -322,7 +317,7 @@ module circular_shift_right(Y, A);
   or (Y[14], A[15], 0);
 
   or (Y[15], d, 0);
-endmodule
+endmodule //circular_shift_right
 
 
 module circular_shift_left(Y, A);
@@ -350,7 +345,7 @@ module circular_shift_left(Y, A);
   or (Y[13], A[12], 0);
   or (Y[14], A[13], 0);
   or (Y[15], A[14], 0);
-endmodule
+endmodule // circular_shift_left
 
 
 module and_16(Y, A, B);
@@ -374,7 +369,7 @@ module and_16(Y, A, B);
    and(Y[13], A[13], B[13]);
    and(Y[14], A[14], B[14]);
    and(Y[15], A[15], B[15]);
-endmodule 
+endmodule // and_16
 
 module or_16(Y, A, B);
    output [15:0] Y; 
@@ -397,7 +392,7 @@ module or_16(Y, A, B);
    or(Y[13], A[13], B[13]);
    or(Y[14], A[14], B[14]);
    or(Y[15], A[15], B[15]);
-endmodule 
+endmodule // or_16
 
 module extension(o, A);
     input A;
@@ -418,7 +413,7 @@ module extension(o, A);
     and(o[13], 0,0);
     and(o[14], 0,0);
     and(o[15], 0,0);
-endmodule
+endmodule // extension
     
     
 
@@ -443,32 +438,17 @@ module xnor_16(Y, A, B);
    xnor(Y[13], A[13], B[13]);
    xnor(Y[14], A[14], B[14]);
    xnor(Y[15], A[15], B[15]);
-endmodule
+endmodule // xnor_16
 
 
 module zero(Z, A);
-   output Z;        
-   input [15:0]  A;
-   wire [15:0] 	 Y; 
-   
-   xnor(Y[0], A[0], 0); // A XOR 0 = 1 iff A == 0
-   xnor(Y[1], A[1], 0);
-   xnor(Y[2], A[2], 0);
-   xnor(Y[3], A[3], 0);
-   xnor(Y[4], A[4], 0);
-   xnor(Y[5], A[5], 0);
-   xnor(Y[6], A[6], 0);
-   xnor(Y[7], A[7], 0);
-   xnor(Y[8], A[8], 0);
-   xnor(Y[9], A[9], 0);
-   xnor(Y[10], A[10], 0);
-   xnor(Y[11], A[11], 0);
-   xnor(Y[12], A[12], 0);
-   xnor(Y[13], A[13], 0);
-   xnor(Y[14], A[14], 0);
-   xnor(Y[15], A[15], 0);
-   and(Z, Y[0], Y[1], Y[2], Y[3], Y[4], Y[5], Y[6], Y[7], Y[8], Y[9], Y[10], Y[11], Y[12], Y[13], Y[14], Y[15]); // Z = 1 iff Y[i] == 1 for all i
-endmodule
+    output Z;
+    input [15:0] A;
+    wire temp;
+
+    or(temp, A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7], A[8], A[9], A[10], A[11], A[12], A[13], A[14], A[15]);
+    not(Z, temp);
+endmodule // zero
 
 module nonzero(X, A);
     output X;
@@ -604,7 +584,7 @@ module store_op(B, M); //0101
     
     and a1(B,inv3, M[2], inv1, M[0]);
     
-endmodule
+endmodule // store_ op
 
 
 module load_op(B, M); //0110
@@ -618,7 +598,7 @@ module load_op(B, M); //0110
     not n2(inv0, M[0]);
     
     and a1(B, inv3, M[2], M[1], inv0);
-endmodule
+endmodule // load_op
 
 
 module cpu_tb;
