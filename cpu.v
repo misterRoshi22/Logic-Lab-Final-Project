@@ -1,68 +1,79 @@
-// Mahmoud, Selen, Nazeeh
+//Mahmoud Abu-Qtiesh 20210383	sec:Sunday 
+//Selen Qarajeh      20210622   sec:Thursday
+//Nazeeh Hanbali     20210144	sec:Sunday
 
 module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
 
-   output [15:0] Y;    // Result.
-   output 	     C;    // Carry.
-   output 	     V;    // Overflow.
-   output 	     Z;    // Zero.
-   input [2:0]   Op1;  // A address
-   input [2:0]   Op2;  // B address
-   input [3:0]   Op;   // Operation. 4 bits
-   input         clk;  // Clock
-   
-   wire [15:0]   BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight,Comp;
-   wire          Abool, Bbool, LogAnd1, LogOr1,comLT;
-   wire 	     Vas;
-   wire 	     Cas;
-   wire [15:0]   A; // Operand
-   wire [15:0]   B; // Operand
-   wire [15:0]   write_data; // Data used in store and load operations
-   wire          is_store;
-   wire          is_load;
-   wire          is_arth;
-   
+   output [15:0]	 Y;   // Result
+   output 	     	 C;   // Carry
+   output 	    	 V;   // Overflow
+   output 	    	 Z;   // Zero
+   input [2:0]   	Op1;  // A address
+   input [2:0]   	Op2;  // B address
+   input [3:0]   	Op;   // Operation Code
+   input         	clk;  // Clock
   
-   RegisterFile regFile(clk, Op1, Op2, Op1, is_load, write_data, A, B);
-   RAM ram(clk, B[9:0], A, is_store, write_data);
+   wire [15:0]  BitAnd, BitOr, BitXnor, Inc, Dec, Add, Sub, LogAnd, LogOr, CircLeft, CircRight, Comp;   // MUX Inputs
+   wire         comLT;                                                                                  // Comparasion Result
+   wire         Vas0, Vas1, Vas2, Vas3;                                                                 // Overflow's from the 4 Arithmetic Operations
+   wire         Cas0, Cas1, Cas2, Cas3;                                                                 // Carry's from the 4 Arithmetic Operations
+   wire [15:0]  A;                                                                                      // Operand
+   wire [15:0]  B;                                                                                      // Operand
+   wire [15:0]  RAM_read;                                                                               // Data used in store and load operations
+   wire [15:0]  write_data;
+   wire [2:0]   write_address;
+   wire         is_store;
+   wire         is_load;
+   wire         is_set; 
+   wire         write_enable;
    
-   //temps
-   nonzero ab(Abool, A); //if A != 0 then Abool = 1
-   nonzero bb(Bbool, B); //if B != 0 then Bbool = 1
+   
+  //is is_set == 0, write_address = Op1, write_data = RAM_read
+   RegisterFile regFile(clk, Op1, Op2, write_address, write_enable, write_data, A, B);                  // Op == 0101 Store
+   RAM ram(clk, B[9:0], A, is_store, RAM_read);                                                         // Op == 0110 Load
+   
+   // Minterm Checker for Store Operation and Load Operations
    store_op STORE(is_store, Op);
    load_op  LOAD(is_load, Op);
-   arth_op ARTH(is_ath, Op);
+   set_op   SET(is_set,Op);
    
-   // The operations
-   ripple_carry_adder_subtractor incop(Inc, Cas, Vas, A, 16'b1, 1'b0);     	 // Op == 0000 Result = A + 1
-   ripple_carry_adder_subtractor decop(Dec, Cas, Vas, A, 16'b1, 1'b1);     	 // Op == 0001 Result = A - 1
-   ripple_carry_adder_subtractor subop(Sub, Cas, Vas, A, B, 1'b1);     	     // Op == 0010 Result = A - B
-   ripple_carry_adder_subtractor addop(Add, Cas, Vas, A, B, 1'b0);     	     // Op == 0011 Result = A + B
+   //MUX's for writing data into the register file
+   or o1(write_enable,is_load,is_set); //IF the instruction is either set or load then we will write to the register
+   multiplexer_2_1 mux_write_data(write_data, RAM_read, Comp, is_set); //If the instruction is load then write the data you read from the RAM else write 1 or 0 depending on the situation, assuming write_enable is true
+   multiplexer_2_1_3 mux_write_address(write_address, Op1, Op2, is_set); //If the instruction is load then write to register[Op2] else write to register[Op1], assuming write_enable is 1
+   
+   
+   
+   // Arithmetic Operations
+   ripple_carry_adder_subtractor incop(Inc, Cas0, Vas0, A, 16'b1, 1'b0);     	        // Op == 0000 Result = A + 1
+   ripple_carry_adder_subtractor decop(Dec, Cas1, Vas1, A, 16'b1, 1'b1);     	        // Op == 0001 Result = A - 1
+   ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	        // Op == 0010 Result = A - B
+   ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	        // Op == 0011 Result = A + B
 
-   comparator compop(comLT,A,B);								         // Op == 0100 Result = A <= B ? 1 : 0
+   // Logical Operations
+   comparator compop(comLT,A,B);							                            // Op == 0100 A = A <= B ? 1 : 0
    extension compop2(Comp, comLT);
-                                	                                     // Op == 0101 Store
-	                            	                                     // Op == 0110 Load
 
 
-   logical_and logandop(LogAnd, A, B);
-   logical_or logorop(LogOr, A, B);
+   logical_and logandop(LogAnd, A, B);                                                  // Op == 0111 Result = A && B
+   logical_or logorop(LogOr, A, B);                                                     // Op == 1000 Result = A || B
 
-  
-
-   and_16 andop(BitAnd, A, B);                                           // Op == 1001 Result = A . B
-   or_16 orop(BitOr, A, B);                                              // Op == 1010 Result = A + B
-   xnor_16 xnorop(BitXnor, A, B);                                        // Op == 1011 Result = A ~^ B
+   and_16 andop(BitAnd, A, B);                                                          // Op == 1001 Result = A & B
+   or_16 orop(BitOr, A, B);                                                             // Op == 1010 Result = A | B
+   xnor_16 xnorop(BitXnor, A, B);                                                       // Op == 1011 Result = A ~^ B
    			                                                            
+   circular_shift_right rightop(CircRight, A);                                          // Op == 1100 Result = A >> 1 + A[0]
+   circular_shift_left leftop(CircLeft, A);                                             // Op == 1101 Result = A << 1 + A[15]
 
-   circular_shift_right rightop(CircRight, A);                           // Op == 1100 Result = A >> 1 + A[0]
-   circular_shift_left leftop(CircLeft, A);                              // Op == 1101 Result = A << 1 + A[15]
 
-   multiplexer_16_1 mux(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
+   // Result and Status MUX's
+   multiplexer_16_1_1 muxC(C, Cas0, Cas1, Cas2, Cas3, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, Op);
+   multiplexer_16_1_1 muxv(V, Vas0, Vas1, Vas2, Vas3, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, Op);
+   multiplexer_16_1 muxY(Y, Inc, Dec, Sub, Add, Comp, 16'b1, 16'b1, LogAnd, LogOr, BitAnd, BitOr, BitXnor, CircRight, CircLeft, 16'b0, 16'b0, Op);
 
-   zero z(Z, Y);           // All operations can set the Zero status bit.
-   and(V, Vas, is_arth);
-   and(C, Cas, is_arth);
+   // Zero Flag set to 1 iff Result == 0
+   zero z(Z, Y);           
+   
 endmodule // cpu
 
 
@@ -78,7 +89,7 @@ module logical_and(R, A, B);
 
   and(final, temp_a, temp_b);
   extension e1(R, final);
-endmodule
+endmodule // logical_and
 
 module logical_or(R, A, B);
   input [15:0] A;
@@ -92,8 +103,19 @@ module logical_or(R, A, B);
 
   or(final, temp_a, temp_b);
   extension e1(R, final);
-endmodule
+endmodule // logical_or
 
+
+module set_op(B, M); //0100
+    input [3:0] M;
+    output B;
+    wire inv0, inv1, inv3;
+    not(inv0, M[0]);
+    not(inv1, M[1]);
+    not(inv3, M[3]);
+    and(B,inv3,M[2],inv0,in1);
+endmodule // set_op
+    
 
 module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write_data, read_data1, read_data2);
   input  clk;
@@ -125,39 +147,31 @@ module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write
       registers[write_addr] <= write_data;
   end
 
-endmodule
+endmodule // RegisterFile
 
 
-module RAM(clk, addr, write_data, write_enable, read_data); //if write = 1 then write else read
-    input  clk; //Same Clock as Register File
-    input  write_enable; //1 if instruction is store else it's equal zero
-    input  [9:0] addr; //Only take the 10 least significant bits when load/store
-    input  [15:0] write_data; 
-    output [15:0] read_data;
+module RAM(clk, addr, write_data, write_enable, read_data);
+  input  clk; // Same Clock as Register File
+  input  write_enable; // 1 if instruction is store, otherwise 0
+  input  [9:0] addr; // Only take the 10 least significant bits for load/store
+  input  [15:0] write_data; 
+  output reg [15:0] read_data; 
 
-    
-    reg [15:0] read_data;
-    
-    reg[15:0] Memory[0:1023];
-    
-    integer i;
-    initial begin
-    
-    for( i = 0; i < 1024; i = i + 1)
-        Memory[i] = i;
-    end
+  reg [15:0] Memory[0:1023];
+  
+  initial begin
+    for (integer i = 0; i < 1024; i = i + 1)
+      Memory[i] = i;
+  end
 
-    always@(negedge clk or addr)
-    begin
-        if(write_enable == 1) begin
-        Memory[addr] = write_data; //Used in store operation where addr = Op2 and write_data = Op1
-        end
-        
-        else if (write_enable == 0) begin
-        read_data = Memory[addr];
-        end
-    end
-endmodule
+  always @(negedge clk or addr or write_data) begin
+    if (write_enable == 1)
+      Memory[addr] <= write_data; // Used in store operation where addr = Op2 and write_data = Op1
+      
+    read_data <= Memory[addr]; // Move read_data assignment inside always block
+  end
+endmodule // RAM
+
 
 
 
@@ -222,7 +236,29 @@ module comparator(comLT,A,B);
   
 or(comLT,LT[15],LT[14],LT[13],LT[12],LT[11],LT[10],LT[9],LT[8],LT[7],LT[6],LT[5],LT[4],LT[3],LT[2],LT[1],LT[0]);
 
-endmodule
+endmodule // comparator
+
+
+module multiplexer_2_1(X, A, B, S);
+   output [15:0] X;        // The output line
+
+   input [15:0] A;         // Input line A
+   input [15:0] B;         // Input line B
+   input S;                // Selection line
+
+   assign X = (S == 0) ? A : B;
+endmodule // multiplexer_2_1
+
+module multiplexer_2_1_3(X, A, B, S);
+   output [2:0] X;        // The output line
+
+   input [2:0] A;         // Input line A
+   input [2:0] B;         // Input line B
+   input S;                // Selection line
+
+   assign X = (S == 0) ? A : B;
+endmodule // multiplexer_2_1_4
+
 
 
 module multiplexer_16_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, S);
@@ -263,6 +299,45 @@ module multiplexer_16_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12
                      : (S[0] == 0 ? A14 : A15))));
 endmodule // multiplexer_16_1
 
+module multiplexer_16_1_1(X, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, S);
+  output X;              // The output line
+
+  input A15;             // Input line with id 4'b1111
+  input A14;             // Input line with id 4'b1110
+  input A13;             // Input line with id 4'b1101
+  input A12;             // Input line with id 4'b1100
+  input A11;             // Input line with id 4'b1011
+  input A10;             // Input line with id 4'b1010
+  input A9;              // Input line with id 4'b1001
+  input A8;              // Input line with id 4'b1000
+  input A7;              // Input line with id 4'b0111
+  input A6;              // Input line with id 4'b0110
+  input A5;              // Input line with id 4'b0101
+  input A4;              // Input line with id 4'b0100
+  input A3;              // Input line with id 4'b0011
+  input A2;              // Input line with id 4'b0010
+  input A1;              // Input line with id 4'b0001
+  input A0;              // Input line with id 4'b0000
+  input [3:0] S;         // Selection lines
+
+  assign X = (S[3] == 0 
+              ? (S[2] == 0 
+                  ? (S[1] == 0 
+                     ? (S[0] == 0 ? A0 : A1)
+                     : (S[0] == 0 ? A2 : A3))
+                  : (S[1] == 0 
+                     ? (S[0] == 0 ? A4 : A5)
+                     : (S[0] == 0 ? A6 : A7)))
+              : (S[2] == 0 
+                  ? (S[1] == 0 
+                     ? (S[0] == 0 ? A8 : A9)
+                     : (S[0] == 0 ? A10 : A11))
+                  : (S[1] == 0 
+                     ? (S[0] == 0 ? A12 : A13)
+                     : (S[0] == 0 ? A14 : A15))));
+endmodule // multiplexer_16_1_1
+
+
 module circular_shift_right(Y, A);
   input [15:0] A;
   output [15:0] Y;
@@ -289,7 +364,7 @@ module circular_shift_right(Y, A);
   or (Y[14], A[15], 0);
 
   or (Y[15], d, 0);
-endmodule
+endmodule //circular_shift_right
 
 
 module circular_shift_left(Y, A);
@@ -317,7 +392,7 @@ module circular_shift_left(Y, A);
   or (Y[13], A[12], 0);
   or (Y[14], A[13], 0);
   or (Y[15], A[14], 0);
-endmodule
+endmodule // circular_shift_left
 
 
 module and_16(Y, A, B);
@@ -341,7 +416,7 @@ module and_16(Y, A, B);
    and(Y[13], A[13], B[13]);
    and(Y[14], A[14], B[14]);
    and(Y[15], A[15], B[15]);
-endmodule 
+endmodule // and_16
 
 module or_16(Y, A, B);
    output [15:0] Y; 
@@ -364,7 +439,7 @@ module or_16(Y, A, B);
    or(Y[13], A[13], B[13]);
    or(Y[14], A[14], B[14]);
    or(Y[15], A[15], B[15]);
-endmodule 
+endmodule // or_16
 
 module extension(o, A);
     input A;
@@ -385,7 +460,7 @@ module extension(o, A);
     and(o[13], 0,0);
     and(o[14], 0,0);
     and(o[15], 0,0);
-endmodule
+endmodule // extension
     
     
 
@@ -410,32 +485,17 @@ module xnor_16(Y, A, B);
    xnor(Y[13], A[13], B[13]);
    xnor(Y[14], A[14], B[14]);
    xnor(Y[15], A[15], B[15]);
-endmodule
+endmodule // xnor_16
 
 
 module zero(Z, A);
-   output Z;        
-   input [15:0]  A;
-   wire [15:0] 	 Y; 
-   
-   xnor(Y[0], A[0], 0); // A XOR 0 = 1 iff A == 0
-   xnor(Y[1], A[1], 0);
-   xnor(Y[2], A[2], 0);
-   xnor(Y[3], A[3], 0);
-   xnor(Y[4], A[4], 0);
-   xnor(Y[5], A[5], 0);
-   xnor(Y[6], A[6], 0);
-   xnor(Y[7], A[7], 0);
-   xnor(Y[8], A[8], 0);
-   xnor(Y[9], A[9], 0);
-   xnor(Y[10], A[10], 0);
-   xnor(Y[11], A[11], 0);
-   xnor(Y[12], A[12], 0);
-   xnor(Y[13], A[13], 0);
-   xnor(Y[14], A[14], 0);
-   xnor(Y[15], A[15], 0);
-   and(Z, Y[0], Y[1], Y[2], Y[3], Y[4], Y[5], Y[6], Y[7], Y[8], Y[9], Y[10], Y[11], Y[12], Y[13], Y[14], Y[15]); // Z = 1 iff Y[i] == 1 for all i
-endmodule
+    output Z;
+    input [15:0] A;
+    wire temp;
+
+    or(temp, A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7], A[8], A[9], A[10], A[11], A[12], A[13], A[14], A[15]);
+    not(Z, temp);
+endmodule // zero
 
 module nonzero(X, A);
     output X;
@@ -546,19 +606,6 @@ module ripple_carry_adder_subtractor(S, C, V, A, B, Op);
 endmodule // ripple_carry_adder_subtractor
 
 
-module arth_op(B, M); //00xx
-    input [3:0] M;
-    output B;
-    
-    wire inv3;
-    wire inv2;
-    
-    not n1(inv3, M[3]);
-    not n2(inv2, M[2]);
-    
-    and a1(bB, inv3, inv2);
-endmodule //arth_op
-
 module store_op(B, M); //0101
     input [3:0] M;
     output B;
@@ -571,7 +618,7 @@ module store_op(B, M); //0101
     
     and a1(B,inv3, M[2], inv1, M[0]);
     
-endmodule
+endmodule // store_ op
 
 
 module load_op(B, M); //0110
@@ -585,7 +632,7 @@ module load_op(B, M); //0110
     not n2(inv0, M[0]);
     
     and a1(B, inv3, M[2], M[1], inv0);
-endmodule
+endmodule // load_op
 
 
 module cpu_tb;
@@ -599,110 +646,132 @@ module cpu_tb;
   cpu cpu_inst(Y_tb, C_tb, V_tb, Z_tb, Op1_tb, Op2_tb, Op_tb, clk_tb);
   
   initial begin
-    // Initialize testbench inputs
     clk_tb = 0;
     Op1_tb = 0;
     Op2_tb = 0;
     Op_tb = 0;
     
-    // Wait for initialization 
-
-    // Perform operation 0001 (Op1 = Op1 + 1)
+    #10// Wait for initialization 
+    $display("The Ram and register file are initialized to have the same value as the address   i.e register[101]=5,ram[101]=5..");
+    
+    // Perform operation 0000 (Op1 = Op1 + 1)
     Op1_tb = 1;
     Op2_tb = 2;
     Op_tb = 4'b0000;
     #10;
-    $display("Operation 0000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // A++ = 2
+    $display("Operation 0000: Op1=%d               register[%b]+1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 2   
     
     // Perform operation 0001 (Op1 = Op1 - 1)
     Op1_tb = 5;
     Op_tb = 4'b0001;
     #10;
-    $display("Operation 0001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // A-- = 4
+    $display("Operation 0001: Op1=%d               register[%b]-1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 4   
     
     // Perform operation 0010 (Op1 - Op2) 
     Op_tb = 4'b0010;
-    Op1_tb = 5;
-    Op2_tb = 3;
+    Op1_tb = 7;
+    Op2_tb = 1;
     #10;
-    $display("Operation 0010: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);// A - B = 2
+    $display("Operation 0010: Op1=%d    Op2=%d      Op1-Op2 = %d,                                    C = %b, V = %b, Z = %b",Op1_tb,Op2_tb, Y_tb, C_tb, V_tb, Z_tb);// 6
     
     // Perform operation 0011 (Op1 + Op2) 
     Op_tb = 4'b0011;
-    Op1_tb = 1;
+    Op1_tb = 5;
     Op2_tb = 5;
     #10;
-    $display("Operation 0011: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); // A + B = 6
+    $display("Operation 0011: Op1=%d    Op2=%d      Op1+Op2 = %d,                                    C = %b, V = %b, Z = %b",Op1_tb,Op2_tb, Y_tb, C_tb, V_tb, Z_tb);// 10
     
-    // Perform operation 0100 (Op1 <= Op2)
+    // Perform operation 0100 (Op1 < Op2)
     Op_tb = 4'b0100;
     Op1_tb = 6;
     Op2_tb = 1;
     #10;
-    $display("Operation 0100: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb); //  A <= B == false
+    $display("Operation 0100: Op1=%d    Op2=%d      Op1<Op2 = %d,                                                  Z = %b",Op1_tb,Op2_tb, Y_tb, Z_tb);// 1
+    //#10 $display("Now Op2=%d    ",Op2_tb);
     
-    // Perform Operation 0101 (memory[Op2] = register[Op1)
-    Op_tb = 4'b0101;
+    #50;
+    // Perform operation 0000 (Op1 = Op1 + 1)
+    Op_tb = 4'b0000;
     Op1_tb = 6;
+    #10;
+    $display("Operation 0000: Op1=%d               register[%b]+1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 2
+    
+    // Perform Operation 0101 (memory[Op2] = register[Op1])
+    Op_tb = 4'b0101;
+    Op1_tb = 2;
     Op2_tb = 7;
     #10;
-    $display("Operation 0101: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0101: Op1=%d    Op2=%d      memory[%b] = register[%b]=%d,                                    Z = %b",Op1_tb,Op2_tb,Op2_tb,Op1_tb,Op1_tb,Z_tb);//1
     
-    // Perform Operation 0110 (regiester[Op1] = memory[Op2])
+    // Perform Operation 0110 (register[Op1] = memory[Op2])
     Op_tb = 4'b0110;
-    Op1_tb = 0;
-    Op2_tb = 2;
+    Op1_tb = 4;
+    Op2_tb = 7;
     #10;
-    $display("Operation 0110: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0110: Op1=%d    Op2=%d      register[%b] = memory[%b]=2,                                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Z_tb);//1
+    
+    // Perform operation 0000 (Op1 = Op1 + 1)
+    Op1_tb = 4;
+    Op2_tb = 2;
+    Op_tb = 4'b0000;
+    #10;
+    $display("Operation 0000: Op1=%d               register[%b]+1 = %d,         	                C = %b, V = %b, Z = %b",Op1_tb,Op1_tb, Y_tb, C_tb, V_tb, Z_tb); // 3    
     
     // Perform Operation 0111 (Op1 && Op2)
     Op_tb = 4'b0111;
-    Op1_tb = 1;
+    Op1_tb = 0;
     Op2_tb = 3;
     #10;
-    $display("Operation 0111: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 0111: Op1=%d    Op2=%d      register[%b]!=0 && register[%b]!=0   =%d,                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//0
     
-    // Perform Operation 1000 (Op1 || Op2) //TODO DOESNT WORK
+    // Perform Operation 0111 (Op1 && Op2)
+    Op_tb = 4'b0111;
+    Op1_tb = 6;
+    Op2_tb = 5;
+    #10;
+    $display("Operation 0111: Op1=%d    Op2=%d      register[%b]!=0 && register[%b]!=0   =%d,                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//1
+    
+    // Perform Operation 1000 (Op1 || Op2) 
     Op_tb = 4'b1000;
-    Op1_tb = 1;
+    Op1_tb = 0;
     Op2_tb = 2;
     #10;
-    $display("Operation 1000: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 1000: Op1=%d    Op2=%d      register[%b]!=0 || register[%b]!=0   =%d,                    Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//1
     
     // Perform Operation 1001 (Op1 & Op2)
     Op_tb = 4'b1001;
-    Op1_tb = 5;
-    Op2_tb = 2;
+    Op1_tb = 7;
+    Op2_tb = 3;
     #10;
-    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 1001: Op1=%d    Op2=%d      register[%b] & register[%b] =%b,                  Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//3
     
     // Perform Operation 1010 (Op1 | Op2)
     Op_tb = 4'b1010;
-    Op1_tb = 5;
-    Op2_tb = 2;
+    Op1_tb = 7;
+    Op2_tb = 3;
     #10;
-    $display("Operation 1010: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 1010: Op1=%d    Op2=%d      register[%b] | register[%b] =%b,                  Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//7
     
-    // Perform Operation 1011 (Op1 | Op2)
+    // Perform Operation 1011 (Op1 ~^ Op2)
     Op_tb = 4'b1011;
-    Op1_tb = 5;
-    Op2_tb = 2;
+    Op1_tb = 7;
+    Op2_tb = 3;
     #10;
-    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 1011: Op1=%d    Op2=%d      register[%b] ~^ register[%b] =%b,                 Z = %b",Op1_tb,Op2_tb,Op1_tb,Op2_tb,Y_tb,Z_tb);//ra8am kbeer
     
-    // Perform Operation 1100 (Op1 | Op2)
+    // Perform Operation 1100  shift right
     Op_tb = 4'b1100;
-    Op1_tb = 6;
+    Op1_tb = 1;
     Op2_tb = 2;
     #10;
-    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 1100: Op1=%d               register[%b] shifted to the right =%b,             Z = %b",Op1_tb,Op1_tb,Y_tb,Z_tb);//7
     
-    // Perform Operation 1101 (Op1 | Op2)
+    // Perform Operation 1101  shift left
     Op_tb = 4'b1101;
     Op1_tb = 6;
     Op2_tb = 2;
     #10;
-    $display("Operation 1001: Y = %d, C = %b, V = %b, Z = %b", Y_tb, C_tb, V_tb, Z_tb);
+    $display("Operation 1101: Op1=%d               register[%b] shifted to the left  =%b,             Z = %b",Op1_tb,Op1_tb,Y_tb,Z_tb);//12
     
     
     // End simulation
