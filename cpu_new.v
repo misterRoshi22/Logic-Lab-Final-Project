@@ -34,11 +34,11 @@ module cpu(Y, C, V, Z, Op1, Op2, Op, clk);
    // Arithmetic Operations
    ripple_carry_adder_subtractor incop(Inc, Cas0, Vas0, A, 16'b1, 1'b0);     	        // Op == 0000 Result = A + 1
    ripple_carry_adder_subtractor decop(Dec, Cas1, Vas1, A, 16'b1, 1'b1);     	        // Op == 0001 Result = A - 1
-   ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	        // Op == 0010 Result = A - B
-   ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	        // Op == 0011 Result = A + B
+   ripple_carry_adder_subtractor subop(Sub, Cas2, Vas2, A, B, 1'b1);     	            // Op == 0010 Result = A - B
+   ripple_carry_adder_subtractor addop(Add, Cas3, Vas3, A, B, 1'b0);     	            // Op == 0011 Result = A + B
 
    // Logical Operations
-   comparator compop(comLT,A,B);							// Op == 0100 A = A <= B ? 1 : 0
+   comparator compop(comLT,A,B);							                            // Op == 0100 A = A <= B ? 1 : 0
    extension compop2(Comp, comLT);
 
    logical_and logandop(LogAnd, A, B);                                                  // Op == 0111 Result = A && B
@@ -94,16 +94,16 @@ endmodule // logical_or
 
 module RegisterFile(clk, read_addr1, read_addr2, write_addr, write_enable, write_data, read_data1, read_data2);
   input  clk;
-  input  [2:0] read_addr1; // Address of operand 1
-  input  [2:0] read_addr2; // Address of operand 2
-  input  [2:0] write_addr; // Used in load operation, (write_address = Op1)
-  input  write_enable; // This will only be 1 in load operation else its zero
-  input  [15:0] write_data; // Used in load operation, (write_data = &Op2 from RAM)
-  output  [15:0] read_data1; // Op1
-  output  [15:0] read_data2;// Op1
+  input  [2:0] read_addr1;      // Address of operand 1
+  input  [2:0] read_addr2;      // Address of operand 2
+  input  [2:0] write_addr;      // Used in load operation, (write_address = Op1)
+  input  write_enable;          // This will only be 1 in load operation else its zero
+  input  [15:0] write_data;     // Used in load operation, (write_data = &Op2 from RAM)
+  output  [15:0] read_data1;    // Op1
+  output  [15:0] read_data2;    // Op1
   input init;
   
-  reg [15:0] registers [0:7]; // The eight registers comprising the register file
+  reg [15:0] registers [0:7];   // The eight registers comprising the register file
   
   integer i;
   
@@ -126,9 +126,9 @@ endmodule // RegisterFile
 
 
 module RAM(clk, addr, write_data, write_enable, read_data);
-  input  clk; // Same Clock as Register File
-  input  write_enable; // 1 if instruction is store, otherwise 0
-  input  [9:0] addr; // Only take the 10 least significant bits for load/store
+  input  clk;               // Same Clock as Register File
+  input  write_enable;      // 1 if instruction is store, otherwise 0
+  input  [9:0] addr;        // Only take the 10 least significant bits for load/store
   input  [15:0] write_data; 
   output reg [15:0] read_data; 
 
@@ -143,7 +143,7 @@ module RAM(clk, addr, write_data, write_enable, read_data);
     if (write_enable == 1)
       Memory[addr] <= write_data; // Used in store operation where addr = Op2 and write_data = Op1
       
-    read_data <= Memory[addr]; // Move read_data assignment inside always block
+    read_data <= Memory[addr];   // Move read_data assignment inside always block
   end
 endmodule // RAM
 
@@ -450,11 +450,6 @@ module zero(Z, A);
     not(Z, temp);
 endmodule // zero
 
-module nonzero(X, A);
-    output X;
-    input [15:0] A;
-    or(X, A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7], A[8], A[9], A[10], A[11], A[12], A[13], A[14], A[15]);
-endmodule
       
 module full_adder(S, Cout, A, B, Cin);
    output S;
@@ -478,17 +473,17 @@ endmodule // full_adder
 
 
 module ripple_carry_adder_subtractor(S, C, V, A, B, Op);
-   output [15:0] S;   // The 16-bit sum/difference.
-   output 	C;   // The 1-bit carry/borrow status.
-   output 	V;   // The 1-bit overflow status.
-   input [15:0] 	A;   // The 16-bit augend/minuend.
-   input [15:0] 	B;   // The 16-bit addend/subtrahend.
-   input 	Op;  // The operation: 0 => Add, 1=>Subtract.
+   output [15:0] S;         // The 16-bit sum/difference.
+   output 	C;              // The 1-bit carry/borrow status.
+   output 	V;              // The 1-bit overflow status.
+   input [15:0] 	A;      // The 16-bit augend/minuend.
+   input [15:0] 	B;      // The 16-bit addend/subtrahend.
+   input 	Op;             // The operation: 0 => Add, 1 => Subtract.
    
-   wire 	C0; // The carry out bit of fa0, the carry in bit of fa1.
-   wire 	C1; // The carry out bit of fa1, the carry in bit of fa2.
-   wire 	C2; // The carry out bit of fa2, the carry in bit of fa3.
-   wire 	C3; // The carry out bit of fa2, the carr in bit for fa4
+   wire 	C0;             // The carry out bit of fa0, the carry in bit of fa1.
+   wire 	C1;             // The carry out bit of fa1, the carry in bit of fa2.
+   wire 	C2;             // The carry out bit of fa2, the carry in bit of fa3.
+   wire 	C3;             // The carry out bit of fa2, the carr in bit for fa4
    wire 	C4;
    wire 	C5;
    wire 	C6;
@@ -502,10 +497,10 @@ module ripple_carry_adder_subtractor(S, C, V, A, B, Op);
    wire 	C14;
    wire 	C15;
    
-   wire 	B0; // The xor'd result of B[0] and Op
-   wire 	B1; // The xor'd result of B[1] and Op
-   wire 	B2; // The xor'd result of B[2] and Op
-   wire 	B3; // The xor'd result of B[3] and Op
+   wire 	B0;             // The xor'd result of B[0] and Op
+   wire 	B1;             // The xor'd result of B[1] and Op
+   wire 	B2;             // The xor'd result of B[2] and Op
+   wire 	B3;             // The xor'd result of B[3] and Op
    wire 	B4;
    wire 	B5;
    wire 	B6;
@@ -558,19 +553,6 @@ module ripple_carry_adder_subtractor(S, C, V, A, B, Op);
 
 endmodule // ripple_carry_adder_subtractor
 
-
-module arth_op(B, M); //00xx
-    input [3:0] M;
-    output B;
-    
-    wire inv3;
-    wire inv2;
-    
-    not n1(inv3, M[3]);
-    not n2(inv2, M[2]);
-    
-    and a1(bB, inv3, inv2);
-endmodule //arth_op
 
 module store_op(B, M); //0101
     input [3:0] M;
@@ -652,8 +634,15 @@ module cpu_tb;
     Op1_tb = 6;
     Op2_tb = 1;
     #10;
-    $display("Operation 0100: Op1=%d    Op2=%d      Op1<Op2 = %d,                                                  Z = %b",Op1_tb,Op2_tb, Y_tb, Z_tb);// 0
-    //#10 $display("Now Op2=%d    ",Op2_tb);
+    $display("Operation 0100: Op1=%d    Op2=%d      Op1<Op2,   Op2 = %d,                                           Z = %b",Op1_tb,Op2_tb, Y_tb, Z_tb);// 0
+    
+    
+    // Perform operation 0100 (Op1 < Op2)
+    Op_tb = 4'b0100;
+    Op1_tb = 1;
+    Op2_tb = 6;
+    #10;
+    $display("Operation 0100: Op1=%d    Op2=%d      Op1<Op2,   Op2 = %d,                                           Z = %b",Op1_tb,Op2_tb, Y_tb, Z_tb);// 1
     
     // Perform Operation 0101 (memory[Op2] = register[Op1])
     Op_tb = 4'b0101;
